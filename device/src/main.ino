@@ -3,19 +3,50 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <stdlib.h>
 
-#include "config_main.h"
-#include "config_device.h"
+#include <Wire.h>
+#include <PCF8574.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <NewPing.h>
+#include <PCF8574.h>
+
+#include "device.h"
+
+const char* wifiSsid = TOSAESP_WIFI_SSID;
+const char* wifiPassword = TOSAESP_WIFI_PASS;
+const int otaPort = TOSAESP_OTA_PORT;
+const char* otaPass = TOSAESP_OTA_PASS;
+const char* mqttHost = TOSAESP_MQTT_HOST;
+const int mqttPort = TOSAESP_MQTT_PORT;
+const char* mqttUser = TOSAESP_MQTT_USER;
+const char* mqttPass = TOSAESP_MQTT_PASS;
+
+const char* deviceName = TOSAESP_DEVICE_NAME;
 
 // mqtt
 
+StaticJsonBuffer<200> jsonBuffer;
 WiFiClientSecure wifiClient;
-PubSubClient mqttClient(mqttHost, mqttPort, wifiClient);
 char mqttPrefix[50];
 
 long mqttLastConnectAttempt = 0;
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  bool handled = false;
+// check of topic starts with prefix - redundant as long all subscriptions incl. prefix
+  char subtopic[50];
+  sprintf(subtopic, "%s", topic + strlen(mqttPrefix));
+  JsonObject& msg = jsonBuffer.parseObject((char*)payload);
+#ifdef TOSAESP_OUTPUTS
+  if (!handled) handled = outCallback(subtopic, msg);
+#endif
+}
+
+PubSubClient mqttClient(mqttHost, mqttPort, mqttCallback, wifiClient);
 
 void mqttSubscribe(const char *topic) {
   if (mqttClient.connected()) {
@@ -54,7 +85,7 @@ void mqttPublishBool(const char *topic, bool value, bool retain = true) {
 }
 
 void mqttAnnounce() {
-//  mqttSubscribe("#");
+  mqttSubscribe("#/+/$set");
   mqttPublish("$Online", "true");
   mqttPublish("$Name", deviceName);
   mqttPublish("$MAC", WiFi.macAddress().c_str());
@@ -163,6 +194,53 @@ void loop() {
     otaLoop();
   }
 }
+
+#ifdef TOSAESP_OUTPUTS
+long outEnd[TOSAESP_OUTPUTS];
+bool outEndVal[TOSAESP_OUTPUTS];
+
+void outSetup() {
+  for (byte i = 0; i < TOSAESP_OUTPUTS; i++) {
+    outEnd[i] = 0;
+    pinMode(outputPin[i], OUTPUT);
+    digitalWrite(outputPin[i], outputInv[i] ? HIGH : LOW);
+  }
+}
+
+void outLoop() {
+  for (byte i = 0; i < TOSAESP_OUTPUTS; i++)
+    if (outEnd[i] > 0)
+      if (millis() > outEnd[i]) {
+        outEnd[i] = 0;
+        digitalWrite(outputPin[i], outEndVal[i] ? HIGH : LOW);
+        mqttPublishBool(outputName[i], outEndVal[i]);
+      }
+}
+
+bool outCallback(char* subtopic, JsonObject& msg) {
+  for (byte i = 0; i < TOSAESP_OUTPUTS; i++)
+    if (strstr(subtopic, outputName[i]) == 0) {
+      char* cmd = subtopic + strlen(outputName[i]);
+      if (cmd[0] == '/') {
+        cmd++;
+        if (strstr(cmd, "$set") == 0) {
+          bool v = msg["val"];
+          if (outputInv[i])
+            v = !v;
+          digitalWrite(outputPin[i], v ? HIGH : LOW);
+          mqttPublishBool(outputName[i], v);
+          if (msg.containsKey("pulse")) {
+            long pulse = msg["pulse"];
+            outEnd[i] = millis() + (pulse * 1000);
+            outEndVal[i] = !v;
+          }
+        }
+        return true;
+      }
+    }
+  return false;
+}
+#endif // TOSAESP_OUTPUTS
 
 #ifdef TOSAESP_ONEWIRE
 OneWire ow(OW_PIN);
@@ -276,7 +354,44 @@ void pcf8574Loop() {
 }
 #endif // TOSAESP_PCF8574
 
+#ifdef TOSAESP_COUNTER
+const long cntDelay = 1 * 60 * 1000;
+long cntLast = 0;
+long cntVal = 0;
+
+void cntIntCallback() {
+  cntVal++;
+}
+
+void cntSetup() {
+  pinMode(cntPin, INPUT_PULLUP);
+  int git = CHANGE;
+  if (cntEdge == 'r')
+    git = RISING;
+  else if (cntEdge == 'f')
+    git = FALLING;
+  cntVal = 0;
+  attachInterrupt(cntPin, cntIntCallback, git);
+}
+
+void cntLoop() {
+  long now = millis();
+  if (now - cntLast > cntDelay) {
+    long v = cntVal;
+    mqttPublishLong(cntName, v, "#");
+    cntVal -= v;
+    cntLast = now;
+  }
+}
+#endif // TOSAESP_COUNTER
+
 void mainSetup() {
+#ifdef TOSAESP_OUTPUTS
+  outSetup();
+#endif
+#ifdef TOSAESP_COUNTER
+  cntSetup();
+#endif
 #ifdef TOSAESP_DS18B20
   dsSetup();
 #endif
@@ -289,6 +404,12 @@ void mainSetup() {
 }
 
 void mainLoop() {
+#ifdef TOSAESP_OUTPUTS
+  outLoop();
+#endif
+#ifdef TOSAESP_COUNTER
+  cntLoop();
+#endif
 #ifdef TOSAESP_DS18B20
   dsLoop();
 #endif

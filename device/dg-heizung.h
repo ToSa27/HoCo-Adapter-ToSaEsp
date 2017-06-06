@@ -1,11 +1,9 @@
 const char* deviceName = "dg-heizung";
 
 #define TOSAESP_ONEWIRE
-#include <OneWire.h>
 #define OW_PIN            2
 
 #define TOSAESP_DS18B20
-#include <DallasTemperature.h>
 #define DS_SENSORS        4
 
 const char* dsName[DS_SENSORS] = {
@@ -23,16 +21,13 @@ DeviceAddress dsAddress[DS_SENSORS] = {
 };
 
 #define TOSAESP_I2C
-#include <Wire.h>
 
 #define TOSAESP_PCF8574
-#include <PCF8574.h>
-#include <Wire.h>
 #define PCF8574_ADDR	0x20
 #define PCF8574_INPUTS	2
 byte pcfInputPin[PCF8574_INPUTS] = { 0, 1 };
 bool pcfInputInv[PCF8574_INPUTS] = { true, true };
-const char* pcfInputName[DS_SENSORS] = {
+const char* pcfInputName[PCF8574_INPUTS] = {
   "VentilBad",
   "VentilSchlafzimmer"
 };

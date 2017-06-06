@@ -11,8 +11,19 @@ const char* dsName[DS_SENSORS] = {
   ""
 };
 DeviceAddress dsAddress[DS_SENSORS] = {
-  {0x??,0x??,0x??,0x??,0x??,0x??,0x??,0x??}
+  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}
 };
 
 #define TOSAESP_COUNTER
-#define CNT_PIN           5
+byte cntPin = 5;
+char cntEdge = 'r';
+const char* cntName = "Wasserzaehler";
+
+#define TOSAESP_OUTPUTS   3
+byte outputPin[TOSAESP_OUTPUTS] = { 13, 12, 14 };
+bool outputInv[TOSAESP_OUTPUTS] = { false, false, false };
+const char* outputName[TOSAESP_OUTPUTS] = {
+  "VentilBlumen",
+  "VentilRasen",
+  "VentilVeranda"
+};
