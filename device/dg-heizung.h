@@ -1,5 +1,3 @@
-const char* deviceName = "dg-heizung";
-
 #define TOSAESP_ONEWIRE
 #define OW_PIN            2
 

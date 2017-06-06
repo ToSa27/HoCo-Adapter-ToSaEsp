@@ -1,5 +1,3 @@
-const char* deviceName = "ag-bewaesserung";
-
 #define TOSAESP_ONEWIRE
 #include <OneWire.h>
 #define OW_PIN            2
