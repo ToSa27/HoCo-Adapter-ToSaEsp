@@ -1,0 +1,20 @@
+{
+    "serial": {
+        "port": "",
+        "speed": 115200
+    },
+    "ota": {
+        "port": 8027,
+        "pass": ""
+    },
+    "wifi": {
+        "ssid": "",
+        "pass": ""
+    },
+    "mqtt": {
+        "host": "",
+        "port": 1883,
+        "user": "hoco",
+        "pass": ""
+    }
+}

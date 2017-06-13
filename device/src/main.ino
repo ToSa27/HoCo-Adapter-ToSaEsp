@@ -35,7 +35,10 @@ char mqttPrefix[50];
 
 long mqttLastConnectAttempt = 0;
 
+//void mqttPublish(const char *topic, const char *payload, bool retain);
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+//mqttPublish("debug", "mcb", false);
   bool handled = false;
 // check of topic starts with prefix - redundant as long all subscriptions incl. prefix
   char subtopic[50];
@@ -53,6 +56,8 @@ void mqttSubscribe(const char *topic) {
     char t[100];
     sprintf(t, "%s%s", mqttPrefix, topic);
     mqttClient.subscribe(t);
+//sprintf(t, "mqtt ssub %s%s", mqttPrefix, topic);
+//mqttPublish("debug", t, false);
   }
 }
 
@@ -85,7 +90,7 @@ void mqttPublishBool(const char *topic, bool value, bool retain = true) {
 }
 
 void mqttAnnounce() {
-  mqttSubscribe("#/+/$set");
+//  mqttSubscribe("+/$set");
   mqttPublish("$Online", "true");
   mqttPublish("$Name", deviceName);
   mqttPublish("$MAC", WiFi.macAddress().c_str());
@@ -117,8 +122,16 @@ void mqttLoop() {
 // wifi
 
 void wifiConnect() {
-  Serial.println("WiFi Connect");
+  Serial.print("WiFi Connect");
   WiFi.mode(WIFI_STA);
+/*
+  byte mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("WiFi Connect: MAC: ");
+  for (int i = 0; i < 5; i++)
+    Serial.print(String(mac[i],HEX) + ":");
+  Serial.println(String(mac[5],HEX));
+*/
   WiFi.begin(wifiSsid, wifiPassword);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
@@ -204,6 +217,9 @@ void outSetup() {
     outEnd[i] = 0;
     pinMode(outputPin[i], OUTPUT);
     digitalWrite(outputPin[i], outputInv[i] ? HIGH : LOW);
+    char t[100];
+    sprintf(t, "%s/$set", outputName[i]);
+    mqttSubscribe(t);
   }
 }
 
@@ -218,12 +234,16 @@ void outLoop() {
 }
 
 bool outCallback(char* subtopic, JsonObject& msg) {
+//mqttPublish("debug", "ocb", false);
   for (byte i = 0; i < TOSAESP_OUTPUTS; i++)
     if (strstr(subtopic, outputName[i]) == 0) {
+//mqttPublish("debug", "ocbi1", false);
       char* cmd = subtopic + strlen(outputName[i]);
       if (cmd[0] == '/') {
+//mqttPublish("debug", "ocbi2", false);
         cmd++;
         if (strstr(cmd, "$set") == 0) {
+//mqttPublish("debug", "ocbi3", false);
           bool v = msg["val"];
           if (outputInv[i])
             v = !v;
@@ -378,6 +398,7 @@ void cntLoop() {
   long now = millis();
   if (now - cntLast > cntDelay) {
     long v = cntVal;
+    float vl = (v * cntFactor) + cntOffset;
     mqttPublishLong(cntName, v, "#");
     cntVal -= v;
     cntLast = now;
