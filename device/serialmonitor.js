@@ -1,3 +1,4 @@
+const fs = require('fs-extra');
 const SerialPort = require("serialport");
 
 var serialPort = "COM4";
