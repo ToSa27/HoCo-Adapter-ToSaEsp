@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "fs-extra": "^3.0.1",
+    "mqtt": "^2.8.2",
     "serialport": "^4.0.7"
   }
 }

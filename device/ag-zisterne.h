@@ -1,3 +1,6 @@
+//env:TOSAESP_BOARD=nodemcuv2
+//env:TOSAESP_LIB_DEPS="OneWire, DallasTemperature, PCF8574, NewPing, HLW8012"
+
 #define TOSAESP_ONEWIRE
 #define OW_PIN            2
 
