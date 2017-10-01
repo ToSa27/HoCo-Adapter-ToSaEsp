@@ -88,8 +88,7 @@ envs["TOSAESP_IP"] = port;
 envs["TOSAESP_BUILD_FLAGS"] = "";
 envs["TOSAESP_BOARD"] = "nodemcuv2";
 envs["TOSAESP_BOARDFLASHMODE"] = "qio";
-envs["TOSAESP_LIB_DEPS"] = "OneWire, DallasTemperature, PCF8574, NewPing";
-/*
+envs["TOSAESP_LIB_DEPS"] = "";
 var headerReader = require('readline').createInterface({
     input: fs.createReadStream(device + ".h")
 });
@@ -106,7 +105,6 @@ headerReader.on('line', (line) => {
     }
 });
 headerReader.on('close', () => {
-    */
     build(envs, !network.hasOwnProperty(device), (code) => {
         if (code > 0)
             console.log("Build failed...");
@@ -123,4 +121,4 @@ headerReader.on('close', () => {
             });
         }
     });
-//});
+});

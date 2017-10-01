@@ -338,6 +338,59 @@ bool outCallback(char* subtopic, JsonObject& msg) {
 }
 #endif // TOSAESP_OUTPUTS
 
+#ifdef TOSAESP_INPUTS
+long inCount[TOSAESP_INPUTS];
+ulong inLast[TOSAESP_INPUTS];
+
+void inTriggered(byte input) {
+  if (inLast[input] + inputDebounce[input] < millis())
+    inCount[input]++;
+  inLast[input] = millis();
+}
+
+void inTriggered_0() {
+  inTriggered(0);
+}
+
+void inTriggered_1() {
+  inTriggered(1);
+}
+
+void inTriggered_2() {
+  inTriggered(2);
+}
+
+void inSetup() {
+  for (byte i = 0; i < TOSAESP_INPUTS; i++) {
+    inCount[i] = 0;
+    inLast[i] = 0;
+    pinMode(inputPin[i], inputType[i]);
+    if (inputTrigger[i] != 255)
+      switch (i) {
+        case 0:
+          attachInterrupt(inputPin[i], inTriggered_0, inputTrigger[i]);
+          break;
+        case 1:
+          attachInterrupt(inputPin[i], inTriggered_1, inputTrigger[i]);
+          break;
+        case 2:
+          attachInterrupt(inputPin[i], inTriggered_2, inputTrigger[i]);
+          break;        
+      }
+  }
+}
+
+void inLoop() {
+  for (byte i = 0; i < TOSAESP_INPUTS; i++) {
+    if (inCount[i] > 0) {
+      long sendCount = inCount[i];
+      inCount[i] -= sendCount;
+      mqttPublishLong(inputName[i], sendCount, inputUoM[i], false);
+    }
+  }
+}
+#endif // TOSAESP_INPUTS
+
 #ifdef TOSAESP_ONEWIRE
 OneWire ow(OW_PIN);
 
@@ -684,6 +737,10 @@ void mainSetup() {
   commonSetup();
   outSetup();
 #endif
+#ifdef TOSAESP_INPUTS
+  commonSetup();
+  inSetup();
+#endif
 #ifdef TOSAESP_COUNTER
   commonSetup();
   cntSetup();
@@ -710,6 +767,10 @@ void mainLoop() {
 #ifdef TOSAESP_OUTPUTS
   commonLoop();
   outLoop();
+#endif
+#ifdef TOSAESP_INPUTS
+  commonLoop();
+  inLoop();
 #endif
 #ifdef TOSAESP_COUNTER
   commonLoop();
