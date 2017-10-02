@@ -15,6 +15,7 @@
 #include <DallasTemperature.h>
 #include <NewPing.h>
 #include <PCF8574.h>
+#include <HLW8012.h>
 
 #include "device.h"
 
@@ -49,6 +50,9 @@ bool handleMessage(char* topic, char* payload) {
 #endif
 #ifdef TOSAESP_OUTPUTS
   if (!handled) handled = outCallback(topic, msg);
+#endif
+#ifdef TOSAESP_HLW8012
+  if (!handled) handled = hlw8012Callback(topic, msg);
 #endif
   return handled;
 }
@@ -132,6 +136,9 @@ void mqttAnnounce() {
 #endif
 #ifdef TOSAESP_OUTPUTS
   outSubscribe();
+#endif
+#ifdef TOSAESP_HLW8012
+  hlw8012Subscribe();
 #endif
   mqttPublish("$Online", "true");
   mqttPublish("$Name", deviceName);
@@ -535,6 +542,101 @@ void cntLoop() {
 }
 #endif // TOSAESP_COUNTER
 
+#ifdef TOSAESP_HLW8012
+const long hlw8012Delay = 1 * 60 * 1000;
+long hlw8012Last = 0;
+unsigned int hlw8012LastP = 0;
+unsigned int hlw8012LastV = 0;
+double hlw8012LastC = 0;
+unsigned int hlw8012LastVC = 0;
+int hlw8012LastPF = 0;
+HLW8012 hlw8012;
+
+void hlw8012CF1Interrupt() {
+  hlw8012.cf1_interrupt();
+}
+
+void hlw8012CFInterrupt() {
+  hlw8012.cf_interrupt();
+}
+
+void hlw8012Setup() {
+  hlw8012.begin(hlw8012CFPin, hlw8012CF1Pin, hlw8012SelPin, HIGH, true);
+  hlw8012.setResistors(0.001, 5 * 470000, 1000);
+  // ToDo : load persisted multipliers
+  hlw8012.setCurrentMultiplier(hlw8012CurrentMultiplier);
+  hlw8012.setVoltageMultiplier(hlw8012VoltageMultiplier);
+  hlw8012.setPowerMultiplier(hlw8012PowerMultiplier);
+  attachInterrupt(hlw8012CF1Pin, hlw8012CF1Interrupt, CHANGE);
+  attachInterrupt(hlw8012CFPin, hlw8012CFInterrupt, CHANGE);
+}
+
+void hlw8012Subscribe() {
+  mqttSubscribe("$calibrate");
+  mqttSubscribe("$multipliers");
+}
+
+void hlw8012Loop() {
+  long now = millis();
+  if (now - hlw8012Last > hlw8012Delay) {
+    unsigned int newp = hlw8012.getActivePower();
+    if (newp != hlw8012LastP) {
+      hlw8012LastP = newp;
+      mqttPublishLong("ActivePower", newp, "W");      
+    }
+    unsigned int newv = hlw8012.getVoltage();
+    if (newv != hlw8012LastV) {
+      hlw8012LastV = newv;
+      mqttPublishLong("Voltage", newv, "V");      
+    }
+    double newc = hlw8012.getCurrent();
+    if (newc != hlw8012LastC) {
+      hlw8012LastC = newc;
+      mqttPublishFloat("Current", newc, "A");      
+    }
+    unsigned int newvc = hlw8012.getApparentPower();
+    if (newvc != hlw8012LastVC) {
+      hlw8012LastVC = newvc;
+      mqttPublishLong("ApparentPower", newvc, "VA");      
+    }
+    int newpf = (int) (100 * hlw8012.getPowerFactor());
+    if (newpf != hlw8012LastPF) {
+      hlw8012LastPF = newpf;
+      mqttPublishLong("PowerFactor", newpf, "%");      
+    }
+    hlw8012Last = now;
+  }
+}
+
+bool hlw8012Callback(char* subtopic, JsonObject& msg) {
+  if (strncmp(subtopic, "$calibrate", 10) == 0) {
+    double ep = msg["power"];
+    double ev = msg["voltage"];
+    hlw8012.expectedActivePower(ep);
+    hlw8012.expectedVoltage(ev);
+    hlw8012.expectedCurrent(ep / ev);
+    double cm = hlw8012.getCurrentMultiplier();
+    mqttPublishFloat("CurrentMultiplier", cm, "");    
+    double vm = hlw8012.getVoltageMultiplier();
+    mqttPublishFloat("VoltageMultiplier", vm, "");    
+    double pm = hlw8012.getPowerMultiplier();
+    mqttPublishFloat("PowerMultiplier", pm, "");    
+    // ToDo : persist multipliers
+    return true;
+  } else if (strncmp(subtopic, "$multipliers", 12) == 0) {
+    double cm = msg["current"];
+    hlw8012.setCurrentMultiplier(cm);
+    double vm = msg["voltage"];
+    hlw8012.setVoltageMultiplier(vm);
+    double pm = msg["power"];
+    hlw8012.setPowerMultiplier(pm);
+    // ToDo : persist multipliers
+    return true;
+  }
+  return false;
+}
+#endif // TOSAESP_HLW8012
+
 #ifdef TOSAESP_SCHEDULER
 const long schedDelay = 15 * 1000;
 long schedLast = 0;
@@ -757,6 +859,10 @@ void mainSetup() {
   commonSetup();
   pcf8574Setup();
 #endif
+#ifdef TOSAESP_HLW8012
+  commonLoop();
+  hlw8012Setup();
+#endif
 #ifdef TOSAESP_SCHEDULER
   commonSetup();
   schedSetup();
@@ -787,6 +893,10 @@ void mainLoop() {
 #ifdef TOSAESP_PCF8574
   commonLoop();
   pcf8574Loop();
+#endif
+#ifdef TOSAESP_HLW8012
+  commonLoop();
+  hlw8012Loop();
 #endif
 #ifdef TOSAESP_SCHEDULER
   commonLoop();
