@@ -3,7 +3,7 @@
 
 #define TOSAESP_OUTPUTS   5
 byte outputPin[TOSAESP_OUTPUTS] = { 12, 5, 4, 15, 13 };
-bool outputInv[TOSAESP_OUTPUTS] = { false, false, false, false, false };
+bool outputInv[TOSAESP_OUTPUTS] = { false, false, false, false, true };
 bool outputDefault[TOSAESP_OUTPUTS] = { false, false, false, false, false };
 int outputMaxPulse[TOSAESP_OUTPUTS] = { 0, 0, 0, 0, 0 };
 const char* outputName[TOSAESP_OUTPUTS] = {

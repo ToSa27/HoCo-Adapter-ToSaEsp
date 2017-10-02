@@ -9,14 +9,6 @@
 #include <EEPROM.h>
 #include <TimeLib.h> 
 
-#include <Wire.h>
-#include <PCF8574.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
-#include <NewPing.h>
-#include <PCF8574.h>
-#include <HLW8012.h>
-
 #include "device.h"
 
 #define ULONG_MAX   4294967295
@@ -399,9 +391,14 @@ void inLoop() {
 #endif // TOSAESP_INPUTS
 
 #ifdef TOSAESP_ONEWIRE
+#include <Wire.h>
+#include <OneWire.h>
+
 OneWire ow(OW_PIN);
 
 #ifdef TOSAESP_DS18B20
+#include <DallasTemperature.h>
+
 DallasTemperature ds(&ow);
 
 const long dsDelay = 1 * 60 * 1000;
@@ -452,6 +449,8 @@ void dsLoop() {
 #endif // TOSAESP_ONEWIRE
 
 #ifdef TOSAESP_HCSR04
+#include <NewPing.h>
+
 NewPing us(US_TRIGGER_PIN, US_ECHO_PIN);
 
 const long usDelay = 1 * 60 * 1000;
@@ -486,6 +485,8 @@ void usLoop() {
 #endif // TOSAESP_HCSR04
 
 #ifdef TOSAESP_PCF8574
+#include <PCF8574.h>
+
 PCF8574 pcf8574(PCF8574_ADDR);
 
 const long pcfDelay = 1 * 60 * 1000;
@@ -543,6 +544,8 @@ void cntLoop() {
 #endif // TOSAESP_COUNTER
 
 #ifdef TOSAESP_HLW8012
+#include <HLW8012.h>
+
 const long hlw8012Delay = 1 * 60 * 1000;
 long hlw8012Last = 0;
 unsigned int hlw8012LastP = 0;
