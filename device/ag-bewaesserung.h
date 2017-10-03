@@ -9,6 +9,8 @@
 const char* dsName[DS_SENSORS] = {
   ""
 };
+
+typedef uint8_t DeviceAddress[8];
 DeviceAddress dsAddress[DS_SENSORS] = {
   {0x28,0xff,0xca,0x31,0x86,0x16,0x05,0xda}
 };

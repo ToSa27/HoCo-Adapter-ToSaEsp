@@ -359,6 +359,10 @@ void inTriggered_2() {
   inTriggered(2);
 }
 
+void inTriggered_3() {
+  inTriggered(3);
+}
+
 void inSetup() {
   for (byte i = 0; i < TOSAESP_INPUTS; i++) {
     inCount[i] = 0;
@@ -374,6 +378,9 @@ void inSetup() {
           break;
         case 2:
           attachInterrupt(inputPin[i], inTriggered_2, inputTrigger[i]);
+          break;        
+        case 3:
+          attachInterrupt(inputPin[i], inTriggered_3, inputTrigger[i]);
           break;        
       }
   }

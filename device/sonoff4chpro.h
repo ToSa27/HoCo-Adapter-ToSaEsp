@@ -14,20 +14,18 @@ const char* outputName[TOSAESP_OUTPUTS] = {
   "LED"
 };
 
-#define TOSAESP_INPUTS   5
-byte inputPin[TOSAESP_INPUTS] = { 2, 0, 9, 10, 14 };
-byte inputTrigger[TOSAESP_INPUTS] = { RISING, 255, 255, 255, 255 };
-byte inputType[TOSAESP_INPUTS] = { INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP };
-byte inputDebounce[TOSAESP_INPUTS] = { 100, 100, 100, 100, 100 };
+#define TOSAESP_INPUTS   4
+byte inputPin[TOSAESP_INPUTS] = { 0, 9, 10, 14 };
+byte inputTrigger[TOSAESP_INPUTS] = { 255, 255, 255, 255 };
+byte inputType[TOSAESP_INPUTS] = { INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP };
+byte inputDebounce[TOSAESP_INPUTS] = { 100, 100, 100, 100 };
 const char* inputName[TOSAESP_INPUTS] = {
-  "Drehstromzähler",
   "Taster1",
   "Taster2",
   "Taster3",
   "Taster4"
 };
 const char* inputUoM[TOSAESP_INPUTS] = {
-  "Wh",
   "",
   "",
   "",
