@@ -560,6 +560,12 @@ unsigned int hlw8012LastV = 0;
 double hlw8012LastC = 0;
 unsigned int hlw8012LastVC = 0;
 int hlw8012LastPF = 0;
+byte hlw8012CurrentSample = 0;
+unsigned int hlw8012SampleP = 0;
+unsigned int hlw8012SampleV = 0;
+double hlw8012SampleC = 0;
+unsigned int hlw8012SampleVC = 0;
+int hlw8012SamplePF = 0;
 HLW8012 hlw8012;
 
 void hlw8012CF1Interrupt() {
@@ -588,31 +594,45 @@ void hlw8012Subscribe() {
 
 void hlw8012Loop() {
   long now = millis();
-  if (now - hlw8012Last > hlw8012Delay) {
-    unsigned int newp = hlw8012.getActivePower();
-    if (newp != hlw8012LastP) {
-      hlw8012LastP = newp;
-      mqttPublishLong("ActivePower", newp, "W");      
-    }
-    unsigned int newv = hlw8012.getVoltage();
-    if (newv != hlw8012LastV) {
-      hlw8012LastV = newv;
-      mqttPublishLong("Voltage", newv, "V");      
-    }
-    double newc = hlw8012.getCurrent();
-    if (newc != hlw8012LastC) {
-      hlw8012LastC = newc;
-      mqttPublishFloat("Current", newc, "A");      
-    }
-    unsigned int newvc = hlw8012.getApparentPower();
-    if (newvc != hlw8012LastVC) {
-      hlw8012LastVC = newvc;
-      mqttPublishLong("ApparentPower", newvc, "VA");      
-    }
-    int newpf = (int) (100 * hlw8012.getPowerFactor());
-    if (newpf != hlw8012LastPF) {
-      hlw8012LastPF = newpf;
-      mqttPublishLong("PowerFactor", newpf, "%");      
+  if ((hlw8012CurrentSample == 0 && now - hlw8012Last > hlw8012Delay) || (hlw8012CurrentSample > 0 && now - hlw8012Last > hlw8012SamplesInterval)) {
+    hlw8012SampleP += hlw8012.getActivePower();
+    hlw8012SampleV += hlw8012.getVoltage();
+    hlw8012SampleC += hlw8012.getCurrent();
+    hlw8012SampleVC += hlw8012.getApparentPower();
+    hlw8012SamplePF += (int) (100 * hlw8012.getPowerFactor());
+    hlw8012CurrentSample++;
+    if (hlwCurrentSample >= hlw8012Samples) {
+      hlw8012SampleP = (unsigned int)(hlw8012SampleP / hlw8012Samples);
+      hlw8012SampleV = (unsigned int)(hlw8012SampleV / hlw8012Samples);
+      hlw8012SampleC = (double)(hlw8012SampleC / hlw8012Samples);
+      hlw8012SampleVC = (unsigned int)(hlw8012SampleVC / hlw8012Samples);
+      hlw8012SamplePF = (int)(hlw8012SamplePF / hlw8012Samples);
+      if (hlw8012SampleP != hlw8012LastP) {
+        hlw8012LastP = hlw8012SampleP;
+        mqttPublishLong("ActivePower", hlw8012SampleP, "W");      
+      }
+      if (hlw8012SampleV != hlw8012LastV) {
+        hlw8012LastV = hlw8012SampleV;
+        mqttPublishLong("Voltage", hlw8012SampleV, "V");      
+      }
+      if (hlw8012SampleC != hlw8012LastC) {
+        hlw8012LastC = hlw8012SampleC;
+        mqttPublishFloat("Current", hlw8012SampleC, "A");      
+      }
+      if (hlw8012SampleVC != hlw8012LastVC) {
+        hlw8012LastVC = hlw8012SampleVC;
+        mqttPublishLong("ApparentPower", hlw8012SampleVC, "VA");      
+      }
+      if (hlw8012SamplePF != hlw8012LastPF) {
+        hlw8012LastPF = hlw8012SamplePF;
+        mqttPublishLong("PowerFactor", hlw8012SamplePF, "%");      
+      }
+      hlw8012SampleP = 0;
+      hlw8012SampleV = 0;
+      hlw8012SampleC = 0;
+      hlw8012SampleVC = 0;
+      hlw8012SamplePF = 0;
+      hlw8012CurrentSample = 0;
     }
     hlw8012Last = now;
   }
