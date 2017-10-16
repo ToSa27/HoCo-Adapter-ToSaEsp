@@ -7,9 +7,16 @@
 #include <PubSubClient.h>
 #include <stdlib.h>
 #include <EEPROM.h>
-#include <TimeLib.h> 
 
 #include "device.h"
+
+#ifdef TOSAESP_SCHEDULER
+#define TOSAESP_TIME  
+#endif
+
+#ifdef TOSAESP_TIME
+#include <TimeLib.h> 
+#endif
 
 #define ULONG_MAX   4294967295
 
@@ -59,8 +66,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     char subtopic[50];
     sprintf(subtopic, "%s", dtopic + 9 + 1);
     JsonObject& msg = jsonBuffer.parseObject((char*)payload);
-#ifdef TOSAESP_SCHEDULER
-    if (!handled) handled = schedSetTime(subtopic, msg);
+#ifdef TOSAESP_TIME
+    if (!handled) handled = timeSetTime(subtopic, msg);
 #endif
   } else if (strncmp(dtopic, deviceName, strlen(deviceName)) == 0) {
     // handle device topic
@@ -107,6 +114,12 @@ void mqttPublishLong(const char *topic, long value, const char *uom, bool retain
   mqttPublish(topic, payload, retain);
 }
 
+void mqttPublishTimestamp(const char *topic, time_t value, bool retain = true) {
+  char payload[100];
+  sprintf(payload, "{\"ts\":%d,\"uom\":\"%s\"}", value);
+  mqttPublish(topic, payload, retain);
+}
+
 void mqttPublishFloat(const char *topic, float value, const char *uom, int precision = 2, bool retain = true) {
   char val[50];
   dtostrf(value, 0, precision, val);
@@ -123,8 +136,8 @@ void mqttPublishBool(const char *topic, bool value, bool retain = true) {
 
 void mqttAnnounce() {
   mqttSubscribe("$reboot");
-#ifdef TOSAESP_SCHEDULER
-  schedSubscribe();
+#ifdef TOSAESP_TIME
+  timeSubscribe();
 #endif
 #ifdef TOSAESP_OUTPUTS
   outSubscribe();
@@ -273,6 +286,23 @@ void commonLoop() {
   otaLoop();
 }
 
+#ifdef TOSAESP_TIME
+int32_t timeOffset = 0;
+
+bool timeSetTime(char* subtopic, JsonObject& msg) {
+	if (strncmp(subtopic, "$time", 5) != 0)
+    return false;
+  timeOffset = msg["offset"];
+  unsigned long epoch = msg["epoch"];
+  setTime(epoch);
+  return true;
+}
+
+void timeSubscribe() {
+  mqttSubscribeBroadcast();
+}
+#endif // TOSAESP_TIME
+
 #ifdef TOSAESP_OUTPUTS
 bool outPulseEndVal[TOSAESP_OUTPUTS];
 int outPulse[TOSAESP_OUTPUTS];
@@ -338,13 +368,14 @@ bool outCallback(char* subtopic, JsonObject& msg) {
 #endif // TOSAESP_OUTPUTS
 
 #ifdef TOSAESP_INPUTS
-long inCount[TOSAESP_INPUTS];
-ulong inLast[TOSAESP_INPUTS];
+time_t inTimestamp[TOSAESP_INPUTS];
+time_t inLast[TOSAESP_INPUTS];
 
 void inTriggered(byte input) {
-  if (inLast[input] + inputDebounce[input] < millis())
-    inCount[input]++;
-  inLast[input] = millis();
+  time_t t = now() + timeOffset;
+  if (inLast[input] + inputDebounce[input] < t)
+    inTimestamp[input] = t;
+  inLast[input] = t;
 }
 
 void inTriggered_0() {
@@ -365,7 +396,7 @@ void inTriggered_3() {
 
 void inSetup() {
   for (byte i = 0; i < TOSAESP_INPUTS; i++) {
-    inCount[i] = 0;
+    inTimestamp[0] = 0;
     inLast[i] = 0;
     pinMode(inputPin[i], inputType[i]);
     if (inputTrigger[i] != 255)
@@ -388,10 +419,10 @@ void inSetup() {
 
 void inLoop() {
   for (byte i = 0; i < TOSAESP_INPUTS; i++) {
-    if (inCount[i] > 0) {
-      long sendCount = inCount[i];
-      inCount[i] -= sendCount;
-      mqttPublishLong(inputName[i], sendCount, inputUoM[i], false);
+    while (inTimestamp[i] > 0) {
+      time_t t = inTimestamp[i];
+      inTimestamp[i] = 0;
+      mqttPublishTimestamp(inputName[i], t, false);
     }
   }
 }
@@ -671,7 +702,6 @@ bool hlw8012Callback(char* subtopic, JsonObject& msg) {
 const long schedDelay = 15 * 1000;
 long schedLast = 0;
 unsigned long LastExecution[TOSAESP_SCHEDULER_EVENTS];
-int32_t schedOffset = 0;
 #define EVT_MAX_ACTION_LEN    64
 #define EVT_CONFIG_MAGIC      0x2334ae68
 
@@ -696,15 +726,6 @@ typedef struct {
 } EVENTS;
 
 EVENTS events;
-
-bool schedSetTime(char* subtopic, JsonObject& msg) {
-	if (strncmp(subtopic, "$time", 5) != 0)
-    return false;
-  schedOffset = msg["offset"];
-  unsigned long epoch = msg["epoch"];
-  setTime(epoch);
-  return true;
-}
 
 void schedLoadEvents(bool reset) {
   uint8_t* bevents = (uint8_t*)&events;
@@ -787,7 +808,7 @@ void schedPublishEvent(uint8_t index) {
 
 void schedCheckEvents() {
 	if (timeStatus() != timeNotSet) {
-		time_t t = now() + schedOffset;
+		time_t t = now() + timeOffset;
 		uint16_t mod = minute(t) + (hour(t) * 60);
 		uint8_t wd = weekday(t);
 		bool IsHoliday = false;
@@ -849,10 +870,6 @@ void schedSetup() {
   schedLoadEvents(false);
 	for (uint8_t i = 0; i < TOSAESP_SCHEDULER_EVENTS; i++)
 		LastExecution[i] = 0;
-}
-
-void schedSubscribe() {
-  mqttSubscribeBroadcast();
 }
 
 void schedLoop() {
