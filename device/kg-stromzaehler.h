@@ -5,10 +5,10 @@
 byte inputPin[TOSAESP_INPUTS] = { 5, 4, 0, 2 };
 byte inputTrigger[TOSAESP_INPUTS] = { RISING, RISING, RISING, RISING };
 byte inputType[TOSAESP_INPUTS] = { INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP, INPUT_PULLUP };
-byte inputDebounce[TOSAESP_INPUTS] = { 100, 100, 100, 100 };
+byte inputDebounce[TOSAESP_INPUTS] = { 250, 1000, 1000, 1000 };
 const char* inputName[TOSAESP_INPUTS] = {
   "Drehstromzähler",
-  "Waschmaschine",
+  "Kühlschrank",
   "Serverschrank",
   "Heizung"
 };

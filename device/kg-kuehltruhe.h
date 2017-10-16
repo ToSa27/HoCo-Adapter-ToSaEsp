@@ -19,3 +19,5 @@ byte hlw8012CFPin = 14;
 double hlw8012CurrentMultiplier = 16880.00;
 double hlw8012VoltageMultiplier = 443332.06;
 double hlw8012PowerMultiplier = 13791482.00;
+byte hlw8012Samples = 3;
+long hlw8012SamplesInterval = 1000;

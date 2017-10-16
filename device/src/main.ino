@@ -601,7 +601,7 @@ void hlw8012Loop() {
     hlw8012SampleVC += hlw8012.getApparentPower();
     hlw8012SamplePF += (int) (100 * hlw8012.getPowerFactor());
     hlw8012CurrentSample++;
-    if (hlwCurrentSample >= hlw8012Samples) {
+    if (hlw8012CurrentSample >= hlw8012Samples) {
       hlw8012SampleP = (unsigned int)(hlw8012SampleP / hlw8012Samples);
       hlw8012SampleV = (unsigned int)(hlw8012SampleV / hlw8012Samples);
       hlw8012SampleC = (double)(hlw8012SampleC / hlw8012Samples);
