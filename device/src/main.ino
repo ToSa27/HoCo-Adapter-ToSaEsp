@@ -110,13 +110,13 @@ void mqttPublish(const char *topic, const char *payload, bool retain = true) {
 
 void mqttPublishLong(const char *topic, long value, const char *uom, bool retain = true) {
   char payload[100];
-  sprintf(payload, "{\"val\":%d,\"uom\":\"%s\"}", value, uom);
+  sprintf(payload, "{\"val\":%ld,\"uom\":\"%s\"}", value, uom);
   mqttPublish(topic, payload, retain);
 }
 
 void mqttPublishTimestamp(const char *topic, time_t value, bool retain = true) {
   char payload[100];
-  sprintf(payload, "{\"ts\":%d,\"uom\":\"%s\"}", value);
+  sprintf(payload, "{\"ts\":%ld,\"uom\":\"ts\"}", value);
   mqttPublish(topic, payload, retain);
 }
 
@@ -138,6 +138,11 @@ void mqttAnnounce() {
   mqttSubscribe("$reboot");
 #ifdef TOSAESP_TIME
   timeSubscribe();
+  if (mqttClient.connected()) {
+    char t[30];
+    sprintf(t, "%sroot/$time", mqttSysPrefix);
+    mqttClient.publish(t, "", false);
+  }
 #endif
 #ifdef TOSAESP_OUTPUTS
   outSubscribe();
@@ -295,6 +300,8 @@ bool timeSetTime(char* subtopic, JsonObject& msg) {
   timeOffset = msg["offset"];
   unsigned long epoch = msg["epoch"];
   setTime(epoch);
+  time_t ts = now() + timeOffset;
+//  mqttPublishTimestamp("gottime", ts, "ts");
   return true;
 }
 
@@ -368,14 +375,19 @@ bool outCallback(char* subtopic, JsonObject& msg) {
 #endif // TOSAESP_OUTPUTS
 
 #ifdef TOSAESP_INPUTS
-time_t inTimestamp[TOSAESP_INPUTS];
-time_t inLast[TOSAESP_INPUTS];
+volatile time_t inTimestamp[TOSAESP_INPUTS];
+volatile unsigned long inLast[TOSAESP_INPUTS];
 
 void inTriggered(byte input) {
-  time_t t = now() + timeOffset;
-  if (inLast[input] + inputDebounce[input] < t)
-    inTimestamp[input] = t;
-  inLast[input] = t;
+	if (timeStatus() != timeNotSet) {
+    time_t t = now() + timeOffset;
+    unsigned long ms = millis();
+    if (inLast[input] + inputDebounce[input] < ms) {
+      inTimestamp[input] = t;
+//      mqttPublishTimestamp("triggered", t, false);
+    }
+    inLast[input] = ms;
+  }
 }
 
 void inTriggered_0() {
@@ -394,9 +406,25 @@ void inTriggered_3() {
   inTriggered(3);
 }
 
+void inTriggered_4() {
+  inTriggered(4);
+}
+
+void inTriggered_5() {
+  inTriggered(5);
+}
+
+void inTriggered_6() {
+  inTriggered(6);
+}
+
+void inTriggered_7() {
+  inTriggered(7);
+}
+
 void inSetup() {
   for (byte i = 0; i < TOSAESP_INPUTS; i++) {
-    inTimestamp[0] = 0;
+    inTimestamp[i] = 0;
     inLast[i] = 0;
     pinMode(inputPin[i], inputType[i]);
     if (inputTrigger[i] != 255)
@@ -412,6 +440,18 @@ void inSetup() {
           break;        
         case 3:
           attachInterrupt(inputPin[i], inTriggered_3, inputTrigger[i]);
+          break;        
+        case 4:
+          attachInterrupt(inputPin[i], inTriggered_4, inputTrigger[i]);
+          break;        
+        case 5:
+          attachInterrupt(inputPin[i], inTriggered_5, inputTrigger[i]);
+          break;        
+        case 6:
+          attachInterrupt(inputPin[i], inTriggered_6, inputTrigger[i]);
+          break;        
+        case 7:
+          attachInterrupt(inputPin[i], inTriggered_7, inputTrigger[i]);
           break;        
       }
   }
