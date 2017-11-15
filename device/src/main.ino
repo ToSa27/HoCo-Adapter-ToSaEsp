@@ -7,6 +7,7 @@
 #include <PubSubClient.h>
 #include <stdlib.h>
 #include <EEPROM.h>
+#include <hoco-base.h>
 
 #include "device.h"
 
@@ -254,6 +255,9 @@ void mainLoop();
 void setup() {
   Serial.begin(115200);
   Serial.println("\r\n\nHoCo ESP Setup\n");
+
+  HoCo::Init();
+  
   sprintf(mqttPrefix, "%s%s/", mqttSysPrefix, deviceName);
   wifiConnect();
   otaInit();
