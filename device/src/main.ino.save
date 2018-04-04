@@ -230,7 +230,8 @@ void otaInit() {
     delay(2000);
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("OTA: %u%%\r", (progress / (total / 100)));
+    
+Serial.printf("OTA: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
@@ -571,11 +572,10 @@ void usLoop() {
 #endif // TOSAESP_HCSR04
 
 #ifdef TOSAESP_PCF8574
-#include <pcf8574_esp.h>
+#include <PCF8574.h>
 #include <Wire.h>
 
-TwoWire i2c;
-PCF857x pcf8574(PCF8574_ADDR, &i2c);
+PCF8574 pcf8574(PCF8574_ADDR);
 
 unsigned long pcf8574InputLast[PCF8574_INPUTEND - PCF8574_INPUTSTART + 1];
 volatile bool pcf8574InterruptFlag = false;
@@ -585,14 +585,9 @@ void ICACHE_RAM_ATTR pcf8574Interrupt() {
 }
 
 void pcf8574Setup() {
-  i2c.begin(5,4);
   pcf8574.begin();
   pinMode(PCF8574_INTPIN, INPUT_PULLUP);
-  pcf8574.resetInterruptPin();
-  if (int e = pcf8574.lastError()) {
-    Serial.print("ResetError: ");
-    Serial.println(e, HEX);
-  }
+//  pcf8574.resetInterruptPin();
   attachInterrupt(digitalPinToInterrupt(PCF8574_INTPIN), pcf8574Interrupt, FALLING);
   for (uint8_t i = PCF8574_INPUTSTART; i <= PCF8574_INPUTEND; i++)
     pcf8574InputLast[i - PCF8574_INPUTSTART] = 0;
@@ -601,7 +596,7 @@ void pcf8574Setup() {
 void pcf8574Loop() {
   if (pcf8574InterruptFlag) {
     uint8_t d = pcf8574.read8();
-Serial.printf("pcf int d: %d\r", d); 
+Serial.println("pcf int d: " + d.toString()); 
     pcf8574InterruptFlag = false;
     if (timeStatus() != timeNotSet) {
       time_t t = now() + timeOffset;

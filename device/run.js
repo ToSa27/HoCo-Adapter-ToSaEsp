@@ -16,8 +16,12 @@ function reset(envs) {
 };
 
 function build(envs, upload, cb) {
-    console.log('pio starting for %s at %s', envs["TOSAESP_DEVICE_NAME"], envs["TOSAESP_IP"]);
+    console.log('pio starting for %s%s', envs["TOSAESP_DEVICE_NAME"], upload ? "" : (" at " + envs["TOSAESP_IP"]));
+//    var pio = child_process.spawn("/usr/local/bin/pio", upload ? ["run", "-v", "--target", "upload"] : ["run", "-v"], { env: envs, stdio: "inherit" })
     var pio = child_process.spawn("pio", upload ? ["run", "-v", "--target", "upload"] : ["run", "-v"], { env: envs, stdio: "inherit" })
+        .on('error', (err) => {
+            console.log('pio error: ' + err);
+        })
         .on('exit', (code) => {
             console.log('pio exited with code %d', code);
             cb(code);
@@ -55,6 +59,7 @@ if (process.argv.length != 3) {
     process.exit(1);
 }
 var device = process.argv[2];
+envs["PATH"] = process.env.PATH;
 envs["TOSAESP_DEVICE_NAME"] = device;
 if (!fs.existsSync("config.json")) {
     console.log("Create config.json from template!");
