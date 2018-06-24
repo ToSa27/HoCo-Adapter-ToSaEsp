@@ -11,6 +11,7 @@ if (process.argv.length == 4) {
     serialPort = config.serial.port;
     serialSpeed = config.serial.speed;
 }
+console.log('listening on port ' + serialPort + ' with ' + serialSpeed + ' BAUD');
 var port = new SerialPort(serialPort, {
     baudRate: serialSpeed,
     parser: SerialPort.parsers.readline('\n')
